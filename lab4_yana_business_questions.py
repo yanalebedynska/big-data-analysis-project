@@ -9,7 +9,7 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import when, col, count, avg, round, row_number
 from pyspark.sql.window import Window
 
-from lab2_yana_ratings import read_ratings
+from lab3_yana_ratings import read_ratings
 
 
 spark = SparkSession.builder \
