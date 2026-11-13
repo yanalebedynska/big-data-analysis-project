@@ -14,16 +14,56 @@ def by_genre(df):
 
 
 def business_queries(movies, ratings):
+    runtime_issue = (
+            F.col("runtimeMinutes").isNull()
+            | (F.col("runtimeMinutes") <= 0)
+    )
+
+    genre_issue = (
+            F.col("genres").isNull()
+            | (F.length(F.trim(F.col("genres"))) == 0)
+    )
+
     q1 = (
         movies.filter(
-            F.col("startYear").between(2020, 2025)
-            & F.col("runtimeMinutes").between(60, 120)
+            F.col("startYear").between(2016, 2025)
+            & (runtime_issue | genre_issue)
+        )
+        .withColumn(
+            "issue_count",
+            F.when(runtime_issue, 1).otherwise(0)
+            + F.when(genre_issue, 1).otherwise(0)
+        )
+        .withColumn(
+            "issues",
+            F.concat_ws(
+                ", ",
+                F.when(
+                    F.col("runtimeMinutes").isNull(),
+                    F.lit("no_runtime")
+                ),
+                F.when(
+                    F.col("runtimeMinutes") <= 0,
+                    F.lit("runtime_le_0")
+                ),
+                F.when(
+                    genre_issue,
+                    F.lit("no_genres")
+                )
+            )
         )
         .select(
-            "tconst", "primaryTitle", "startYear",
-            "runtimeMinutes", "genres"
+            "tconst",
+            "primaryTitle",
+            "startYear",
+            "issue_count",
+            "issues"
         )
-        .orderBy(F.desc("startYear"), "runtimeMinutes", "tconst")
+        .orderBy(
+            F.desc("issue_count"),
+            F.desc("startYear"),
+            "tconst"
+        )
         .limit(20)
     )
 
@@ -144,7 +184,7 @@ def business_queries(movies, ratings):
     )
 
     return [
-        ("Кандидати для двогодинного сеансу", q1),
+        ("Картки фільмів для перевірки метаданих", q1),
         ("Кількість фільмів за жанрами", q2),
         ("Динаміка кількості фільмів за роками", q3),
         ("Фільми для ретроспективних показів", q4),
